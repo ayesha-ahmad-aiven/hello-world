@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Quote board</title>
+    <style>
+      :root {
+        --bg-deep: #0f1419;
+        --bg-card: #1a2332;
+        --accent: #e8b86d;
+        --accent-dim: #c49a5a;
+        --text: #f0ebe3;
+        --text-muted: #9aa5b4;
+        --glow: rgba(232, 184, 109, 0.15);
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        min-height: 100vh;
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        background: radial-gradient(ellipse 120% 80% at 50% 0%, #243044 0%, var(--bg-deep) 55%);
+        color: var(--text);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1.25rem;
+      }
+
+      header {
+        text-align: center;
+        margin-bottom: 2.5rem;
+      }
+
+      header h1 {
+        font-family: Georgia, "Times New Roman", serif;
+        font-weight: 600;
+        font-size: clamp(1.75rem, 4vw, 2.25rem);
+        letter-spacing: 0.04em;
+        color: var(--accent);
+      }
+
+      header p {
+        margin-top: 0.5rem;
+        font-size: 0.875rem;
+        color: var(--text-muted);
+      }
+
+      main {
+        width: min(36rem, 100%);
+      }
+
+      .card {
+        background: linear-gradient(145deg, var(--bg-card) 0%, #15202b 100%);
+        border: 1px solid rgba(232, 184, 109, 0.2);
+        border-radius: 1rem;
+        padding: clamp(2rem, 5vw, 3rem) clamp(1.5rem, 4vw, 2.5rem);
+        box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35), 0 0 80px var(--glow);
+        min-height: 14rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        position: relative;
+      }
+
+      .card::before {
+        content: "\201C";
+        position: absolute;
+        top: 0.75rem;
+        left: 1.25rem;
+        font-family: "Cormorant Garamond", serif;
+        font-size: 4rem;
+        line-height: 1;
+        color: var(--accent);
+        opacity: 0.25;
+      }
+
+      .quote-text {
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: clamp(1.35rem, 3.5vw, 1.75rem);
+        line-height: 1.45;
+        font-weight: 400;
+        opacity: 1;
+        transition: opacity 0.45s ease;
+      }
+
+      .quote-text.fade {
+        opacity: 0;
+      }
+
+      .quote-author {
+        margin-top: 1.5rem;
+        font-size: 0.9rem;
+        color: var(--accent-dim);
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        opacity: 1;
+        transition: opacity 0.45s ease;
+      }
+
+      .quote-author.fade {
+        opacity: 0;
+      }
+
+      .quote-author::before {
+        content: "— ";
+      }
+
+      .controls {
+        margin-top: 2rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        justify-content: center;
+        align-items: center;
+      }
+
+      button {
+        font-family: inherit;
+        font-size: 0.875rem;
+        font-weight: 500;
+        padding: 0.65rem 1.25rem;
+        border-radius: 999px;
+        border: 1px solid rgba(232, 184, 109, 0.45);
+        background: transparent;
+        color: var(--accent);
+        cursor: pointer;
+        transition: background 0.2s, transform 0.15s;
+      }
+
+      button:hover {
+        background: rgba(232, 184, 109, 0.12);
+      }
+
+      button:active {
+        transform: scale(0.98);
+      }
+
+      button.primary {
+        background: var(--accent);
+        color: var(--bg-deep);
+        border-color: var(--accent);
+      }
+
+      button.primary:hover {
+        background: #f0c67d;
+      }
+
+      .auto-label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.8125rem;
+        color: var(--text-muted);
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .auto-label input {
+        accent-color: var(--accent);
+      }
+
+      footer {
+        margin-top: 2.5rem;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Quote board</h1>
+      <p>{{ quote_count }} quotes, stored in this app — no external APIs</p>
+    </header>
+    <main>
+      <article class="card" aria-live="polite">
+        <p class="quote-text" id="quote-text"></p>
+        <p class="quote-author" id="quote-author"></p>
+      </article>
+      <div class="controls">
+        <button type="button" class="primary" id="btn-next">Another quote</button>
+        <label class="auto-label">
+          <input type="checkbox" id="auto-rotate" checked />
+          Rotate every 12s
+        </label>
+      </div>
+    </main>
+    <footer>hello-world · Docker</footer>
+
+    <script>
+      const quotes = {{ quotes_json | safe }};
+      let index = Math.floor(Math.random() * quotes.length);
+      let timer = null;
+      const ROTATE_MS = 12000;
+
+      const elText = document.getElementById("quote-text");
+      const elAuthor = document.getElementById("quote-author");
+      const btnNext = document.getElementById("btn-next");
+      const autoRotate = document.getElementById("auto-rotate");
+
+      function showQuote(i, animate) {
+        const q = quotes[i];
+        if (!animate) {
+          elText.textContent = q.text;
+          elAuthor.textContent = q.author;
+          return;
+        }
+        elText.classList.add("fade");
+        elAuthor.classList.add("fade");
+        setTimeout(() => {
+          elText.textContent = q.text;
+          elAuthor.textContent = q.author;
+          elText.classList.remove("fade");
+          elAuthor.classList.remove("fade");
+        }, 450);
+      }
+
+      function nextQuote() {
+        index = (index + 1) % quotes.length;
+        showQuote(index, true);
+      }
+
+      function scheduleAuto() {
+        if (timer) clearInterval(timer);
+        if (autoRotate.checked) {
+          timer = setInterval(nextQuote, ROTATE_MS);
+        }
+      }
+
+      btnNext.addEventListener("click", () => {
+        nextQuote();
+        scheduleAuto();
+      });
+
+      autoRotate.addEventListener("change", scheduleAuto);
+
+      showQuote(index, false);
+      scheduleAuto();
+    </script>
+  </body>
+</html>
